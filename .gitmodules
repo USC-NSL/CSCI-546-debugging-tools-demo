@@ -1,0 +1,6 @@
+[submodule "libs/spdlog"]
+	path = libs/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "libs/opentelemetry-cpp-contrib"]
+	path = libs/opentelemetry-cpp-contrib
+	url = https://github.com/USC-NSL/otel-spdlog-ext.git

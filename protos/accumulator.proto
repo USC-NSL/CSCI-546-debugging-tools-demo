@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+// package Accumulator;
+
+// Interface exported by the server.
+service Accumulator {
+  rpc AddWordCount(AddWordCountRequest) returns (AddWordCountReply) {}
+  rpc GetAllWordCount(Empty) returns (GetAllWordCountReply) {}
+  rpc ResetCounter(Empty) returns (StandardReply) {}
+  rpc Shutdown(Empty) returns (StandardReply) {}
+}
+
+message Empty {}
+
+message AddWordCountRequest {
+  string text = 1;
+}
+
+message AddWordCountReply {
+  int32 word_count = 1;
+  int32 cummulative_count = 2;
+}
+
+message GetAllWordCountReply {
+  int32 cummulative_count = 1;
+}
+
+message StandardReply {
+  string message = 1;
+}

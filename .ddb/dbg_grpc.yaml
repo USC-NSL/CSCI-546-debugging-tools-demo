@@ -1,0 +1,11 @@
+---
+Framework: grpc
+
+ServiceDiscovery:
+  Broker:
+    hostname: 127.0.0.1
+    managed:
+      type: emqx
+
+Conf:
+  on_exit: kill
