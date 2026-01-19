@@ -6,6 +6,13 @@
 #include "rpcClient.h"
 #include "ddb/integration.hpp"
 
+// Logging and tracing includes
+#include "common/logger.hpp"
+#include "spdlog/spdlog.h"
+#ifdef TRACING
+#include "common/utils/tracing.hpp"
+#endif
+
 char* ipAndPort;           // includes port number.
 char* inputText;
 bool resetCounter = false;
@@ -15,6 +22,9 @@ bool shutdownServer = false;
 bool ddb = false;
 char* ddb_host_ip = (char*)"127.0.0.1";
 char* ddb_proc_alias = (char*)"wc_client";
+
+// Logger instance
+std::unique_ptr<accumulator::utils::logger> logger;
 
 void parse_args(int argc, char** argv) {
   static struct option long_options[] = {
@@ -65,6 +75,19 @@ void parse_args(int argc, char** argv) {
 
 int main(int argc, char** argv) {
   parse_args(argc, argv);
+  
+  // Initialize logger infrastructure
+  accumulator::utils::init_logger();
+  
+  std::string service_name = "wc_client";
+
+#ifdef TRACING
+  // Initialize OpenTelemetry tracing and logging
+  tracing::InitOtelInfra(service_name);
+#endif
+
+  // Create logger instance for this service
+  logger = accumulator::utils::logger::get_logger(service_name);
 
   // DDB: initialization
   if (ddb) {
@@ -75,11 +98,21 @@ int main(int argc, char** argv) {
     connector.init();
   }
 
+#ifdef TRACING
+  grpc::ChannelArguments args;
+  auto channel = grpc::experimental::CreateCustomChannelWithInterceptors(
+      ipAndPort,
+      grpc::InsecureChannelCredentials(),
+      args,
+      tracing::CreateClientTracingInterceptors());
+#else
   auto channel = grpc::CreateChannel(ipAndPort, grpc::InsecureChannelCredentials());
+#endif
+
   RpcClient client(channel);
 
   if (resetCounter) {
-   client.ResetCounter();
+    client.ResetCounter();
     std::cout << "Reset invoked." << std::endl;
   } else if (shutdownServer) {
     client.Shutdown();
@@ -93,7 +126,17 @@ int main(int argc, char** argv) {
     auto [wc, wcSum] = client.AddWordCount(inputText);
     std::cout << "Word count: " << wc << std::endl
               << "Sum of all word counts: " << wcSum << std::endl;
+    
+    // Example: logger usage
+    logger->info("Example log: without tracing, this outputs to terminal & file sinks. "
+      "With tracing, this goes to Alloy (Grafana's telemetry collector). "
+      "If the collector is Jaeger, which doesn't support logging, logs will be dropped.");
+    
+    logger->debug("Example debug log. Set the SPDLOG_LEVEL to show.");
   }
+
+  logger.reset();
+  spdlog::shutdown();
 
   return 0;
 }

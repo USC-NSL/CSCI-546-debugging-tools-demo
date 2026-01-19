@@ -13,12 +13,16 @@
 #include <grpcpp/health_check_service_interface.h>
 #include "accumulator.grpc.pb.h"
 
+// Logging and tracing includes
+#include "common/logger.hpp"
+#ifdef TRACING
+#include "common/utils/tracing.hpp"
+#endif
+
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
-
-
 
 char* myAddr;           // includes port number.
 std::unique_ptr<AccumulatorServiceImpl> grpcService;
@@ -29,6 +33,9 @@ bool ddb = false;
 char* ddb_host_ip = (char*)"127.0.0.1";
 char* ddb_proc_alias = (char*)"wc_server";
 
+// Logger instance
+std::unique_ptr<accumulator::utils::logger> logger;
+
 void initGrpcServer() {
   std::string server_address(myAddr);
   grpcService = std::make_unique<AccumulatorServiceImpl>();
@@ -37,8 +44,17 @@ void initGrpcServer() {
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(grpcService.get());
-  grpcServer = builder.BuildAndStart(); //.release();
+  
+#ifdef TRACING
+  // Add tracing interceptors to the server
+  builder.experimental().SetInterceptorCreators(
+      tracing::CreateServerTracingInterceptors());
+#endif
+
+  grpcServer = builder.BuildAndStart();
   grpcService->setGrpcServer(grpcServer.get());
+  
+  logger->info("Server listening on {}", server_address);
   std::cout << "Server listening on " << server_address << std::endl;
 }
 
@@ -80,6 +96,20 @@ void parse_args(int argc, char** argv) {
 
 int main(int argc, char** argv) {
   parse_args(argc, argv);
+  
+  // Initialize logger infrastructure
+  accumulator::utils::init_logger();
+  
+  std::string service_name = "wc_server";
+  
+#ifdef TRACING
+  // Initialize OpenTelemetry tracing and logging
+  tracing::InitOtelInfra(service_name);
+#endif
+
+  // Create logger instance for this service
+  logger = accumulator::utils::logger::get_logger(service_name);
+  logger->info("Starting {} service", service_name);
   
   // DDB: initialization
   if (ddb) {

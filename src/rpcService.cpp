@@ -49,6 +49,18 @@ AccumulatorServiceImpl::AddWordCount(ServerContext* context,
     AddWordCountReply* reply) {
   UNUSED(context);
 
+// Example of manually starting a span
+#ifdef TRACING
+  // Example: logs outside the span can only be viewed in Grafana Loki
+  this->logger->info("Example log outside to the span.");
+  {
+  auto tracer = tracing::detail::Tracer();
+  auto span = tracer->StartSpan("AddWordCountManualSpan", {});
+  auto scope = tracer->WithActiveSpan(span);
+  // Example: logs inside the span will be associated with that span in Grafana Tempo
+  this->logger->info("Example log attached to the span.");
+#endif
+
   // TODO (Milestone1): implement
   // You may use AccumulatorServiceImpl::countWords().
   // Use wcSum variable to keep track the accumulated word counts.
@@ -56,6 +68,14 @@ AccumulatorServiceImpl::AddWordCount(ServerContext* context,
   this->wcSum += newly_added;
   reply->set_word_count(newly_added);
   reply->set_cummulative_count(this->wcSum);
+
+#ifdef TRACING
+  }
+  // Example: when the span fall out of scope here,
+  // logs will not be associated with that span
+  this->logger->info("Span fall out of scope: this will not be associated.");
+#endif
+  
   return Status::OK;
 }
 

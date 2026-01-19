@@ -8,6 +8,12 @@
 #include <grpcpp/grpcpp.h>
 #include "accumulator.grpc.pb.h"
 
+// Logging and tracing includes
+#include "common/logger.hpp"
+#ifdef TRACING
+#include "common/utils/tracing.hpp"
+#endif
+
 using grpc::Server;
 using grpc::ServerContext;
 using grpc::Status;
@@ -20,7 +26,8 @@ extern std::unique_ptr<std::thread> shutdown_thread;
 class AccumulatorServiceImpl final : public Accumulator::Service {
  public:
   AccumulatorServiceImpl()
-    : Accumulator::Service() {}
+    : Accumulator::Service(),
+      logger(accumulator::utils::logger::get_logger("AccumulatorService")) {}
 
   void setGrpcServer(grpc::Server* serverPtr);
  
@@ -45,6 +52,8 @@ class AccumulatorServiceImpl final : public Accumulator::Service {
 
   // Counter for accumulating all word counts.
   int wcSum = 0;
+
+  std::unique_ptr<accumulator::utils::logger> logger;
 };
 
 #endif // RPC_SERVICE_H
