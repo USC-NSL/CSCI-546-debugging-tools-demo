@@ -95,6 +95,15 @@ void parse_args(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
+  // DDB: initialization
+  if (ddb) {
+    auto cfg = DDB::Config::get_default(ddb_host_ip)
+                   .with_alias(ddb_proc_alias)
+                   .with_hash(ddb_proc_alias);
+    auto connector = DDB::DDBConnector(cfg);
+    connector.init();
+  }
+
   parse_args(argc, argv);
   
   // Initialize logger infrastructure
@@ -111,14 +120,6 @@ int main(int argc, char** argv) {
   logger = accumulator::utils::logger::get_logger(service_name);
   logger->info("Starting {} service", service_name);
   
-  // DDB: initialization
-  if (ddb) {
-    auto cfg = DDB::Config::get_default(ddb_host_ip)
-                   .with_alias(ddb_proc_alias)
-                   .with_hash(ddb_proc_alias);
-    auto connector = DDB::DDBConnector(cfg);
-    connector.init();
-  }
 
   initGrpcServer();
   grpcServer->Wait();
