@@ -95,6 +95,9 @@ void parse_args(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
+
+  parse_args(argc, argv);
+  
   // DDB: initialization
   if (ddb) {
     auto cfg = DDB::Config::get_default(ddb_host_ip)
@@ -103,8 +106,6 @@ int main(int argc, char** argv) {
     auto connector = DDB::DDBConnector(cfg);
     connector.init();
   }
-
-  parse_args(argc, argv);
   
   // Initialize logger infrastructure
   accumulator::utils::init_logger();
